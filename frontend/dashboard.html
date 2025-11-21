@@ -13,14 +13,20 @@
         :root {
             --primary: #667eea;
             --secondary: #764ba2;
-            --bg-light: #f5f7fa;
-            --bg-dark: #0d1117;
-            --text-light: #333;
-            --text-dark: #f0f6fc;
+
+            /* Light mode - improved readability without glare */
+            --bg-light: #f8f9fa;
+            --text-light: #2d3748;
             --card-light: #ffffff;
-            --card-dark: #161b22;
-            --border-dark: #30363d;
-            --hover-dark: #21262d;
+            --border-light: #e2e8f0;
+            --hover-light: #f7fafc;
+
+            /* Dark mode - reduced contrast, softer colors */
+            --bg-dark: #1a202c;
+            --text-dark: #e2e8f0;
+            --card-dark: #2d3748;
+            --border-dark: #4a5568;
+            --hover-dark: #374151;
         }
 
         * {
@@ -709,6 +715,155 @@
 
         .dark-mode .loading {
             color: #aaa;
+        }
+
+        /* ========================================
+           TABLE CARD & CONTENT - OPTIMIZED
+           ======================================== */
+
+        .table-card {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(15px) saturate(180%);
+            -webkit-backdrop-filter: blur(15px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            padding: 30px;
+            animation: fadeInUp 0.6s ease-out both;
+            animation-delay: 1s;
+        }
+
+        .dark-mode .table-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .table-tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-color: var(--primary);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .dark-mode .tab-btn {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .dark-mode .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .table-content {
+            position: relative;
+            min-height: 400px;
+        }
+
+        .table-tab {
+            display: none;
+        }
+
+        .table-tab.active {
+            display: block;
+            animation: fadeIn 0.4s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ========================================
+           TABLE SCROLLING - LAZY LOAD OPTIMIZED
+           ======================================== */
+
+        .table-wrapper {
+            max-height: 600px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+
+            /* Smooth scrolling */
+            scroll-behavior: smooth;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) rgba(255,255,255,0.1);
+        }
+
+        .dark-mode .table-wrapper {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        /* Custom Scrollbar for Webkit browsers */
+        .table-wrapper::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .table-wrapper::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+        }
+
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .table-wrapper::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+        }
+
+        /* Sticky header dalam table */
+        .table-wrapper table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .table-wrapper table thead th {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .error {
@@ -2726,11 +2881,23 @@
             setInterval(async () => {
                 console.log('🔄 Auto-refreshing data...');
 
-                // Refresh stats only (lightweight)
+                // Refresh stats
                 await checkAPIHealth();
                 await loadStats();
 
-                console.log('✅ Stats refreshed!');
+                // Refresh data based on active platform
+                if (currentPlatform === 'facebook') {
+                    await loadPosts();
+                    await loadComments();
+                    await loadAuthors();
+                    console.log('✅ Facebook data refreshed!');
+                } else if (currentPlatform === 'instagram') {
+                    await loadInstagramStats();
+                    await loadInstagramPosts();
+                    await loadInstagramComments();
+                    await loadInstagramAuthors();
+                    console.log('✅ Instagram data refreshed!');
+                }
             }, 60000); // Refresh every 1 minute (60 seconds)
         }
 
@@ -3136,8 +3303,13 @@
         function showInstagramTab(tab) {
             // Update tab buttons
             const tabButtons = document.querySelectorAll('#instagram-content .tab-btn');
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active');
+                // Check if this button is for the current tab
+                if (btn.onclick && btn.onclick.toString().includes(`'${tab}'`)) {
+                    btn.classList.add('active');
+                }
+            });
 
             // Show selected tab
             document.getElementById('instagram-posts').classList.remove('active');
@@ -3145,6 +3317,8 @@
             document.getElementById('instagram-authors').classList.remove('active');
 
             document.getElementById(`instagram-${tab}`).classList.add('active');
+
+            console.log(`✅ Switched to Instagram ${tab} tab`);
         }
 
         // Change Instagram per page
