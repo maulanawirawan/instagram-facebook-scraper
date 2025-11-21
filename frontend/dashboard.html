@@ -644,19 +644,120 @@
         td {
             padding: 15px;
             border-bottom: 1px solid #eee;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2d3748;
+            font-weight: 500;
         }
 
         .dark-mode td {
             border-bottom-color: #444;
-            color: var(--text-dark);
+            background: rgba(45, 55, 72, 0.9);
+            color: #e2e8f0;
         }
 
         tr:hover {
-            background: #f8f9fa;
+            background: rgba(248, 249, 250, 0.95) !important;
         }
 
         .dark-mode tr:hover {
-            background: #222;
+            background: rgba(55, 65, 81, 0.95) !important;
+        }
+
+        tr:hover td {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .dark-mode tr:hover td {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        /* Table links - better visibility */
+        td a {
+            color: #667eea;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(102, 126, 234, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        td a:hover {
+            background: rgba(102, 126, 234, 0.2);
+            text-decoration: underline;
+        }
+
+        .dark-mode td a {
+            color: #a5b4fc;
+            background: rgba(165, 180, 252, 0.15);
+        }
+
+        .dark-mode td a:hover {
+            background: rgba(165, 180, 252, 0.25);
+        }
+
+        /* ========================================
+           PAGINATION CONTROLS
+           ======================================== */
+
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .dark-mode .pagination-controls {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .pagination-controls button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .pagination-controls button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .pagination-controls button:disabled {
+            background: #ccc;
+            color: #666;
+            cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.5;
+        }
+
+        .dark-mode .pagination-controls button:disabled {
+            background: #444;
+            color: #888;
+        }
+
+        .pagination-controls .page-info {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2d3748;
+            border-radius: 8px;
+            font-weight: 600;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .dark-mode .pagination-controls .page-info {
+            background: rgba(45, 55, 72, 0.9);
+            color: #e2e8f0;
         }
 
         .post-text {
@@ -811,18 +912,17 @@
         }
 
         /* ========================================
-           TABLE SCROLLING - LAZY LOAD OPTIMIZED
+           TABLE WRAPPER - PAGINATED TABLES
            ======================================== */
 
         .table-wrapper {
-            max-height: 600px;
-            overflow-y: auto;
             overflow-x: auto;
             border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 15px;
 
-            /* Smooth scrolling */
+            /* Smooth scrolling for horizontal overflow */
             scroll-behavior: smooth;
             scrollbar-width: thin;
             scrollbar-color: var(--primary) rgba(255,255,255,0.1);
@@ -2916,6 +3016,13 @@
             authors: []
         };
 
+        // Pagination state
+        let instagramPagination = {
+            posts: { currentPage: 1, perPage: 25, total: 0 },
+            comments: { currentPage: 1, perPage: 25, total: 0 },
+            authors: { currentPage: 1, perPage: 10, total: 0 }
+        };
+
         // Switch between Facebook and Instagram
         function switchPlatform(platform) {
             currentPlatform = platform;
@@ -3053,7 +3160,6 @@
             try {
                 const response = await apiFetch('/api/instagram/authors/top?limit=10');
                 const authors = await response.json();
-                instagramData.authors = authors;
 
                 const ctx = document.getElementById('instagramAuthorsChart');
                 if (instagramCharts.authors) {
@@ -3084,10 +3190,27 @@
                     }
                 });
 
-                // Render authors table
-                renderInstagramAuthorsTable(authors);
+                // Load authors table separately with pagination
+                loadInstagramAuthorsTable();
             } catch (error) {
                 console.error('Error loading Instagram authors:', error);
+            }
+        }
+
+        // Load Instagram authors table with pagination
+        async function loadInstagramAuthorsTable() {
+            try {
+                const { currentPage, perPage } = instagramPagination.authors;
+                const response = await apiFetch(`/api/instagram/authors?page=${currentPage}&limit=${perPage}`);
+                const data = await response.json();
+
+                instagramData.authors = data.authors || [];
+                instagramPagination.authors.total = data.total || 0;
+
+                renderInstagramAuthorsTable(instagramData.authors);
+            } catch (error) {
+                console.error('Error loading Instagram authors table:', error);
+                document.getElementById('instagram-authors').innerHTML = '<div class="error">Failed to load authors</div>';
             }
         }
 
@@ -3139,12 +3262,15 @@
             }
         }
 
-        // Load Instagram posts
+        // Load Instagram posts with pagination
         async function loadInstagramPosts() {
             try {
-                const response = await apiFetch('/api/instagram/posts?limit=50');
+                const { currentPage, perPage } = instagramPagination.posts;
+                const response = await apiFetch(`/api/instagram/posts?page=${currentPage}&limit=${perPage}`);
                 const data = await response.json();
+
                 instagramData.posts = data.posts || [];
+                instagramPagination.posts.total = data.total || 0;
 
                 renderInstagramPostsTable(instagramData.posts);
             } catch (error) {
@@ -3153,12 +3279,15 @@
             }
         }
 
-        // Load Instagram comments
+        // Load Instagram comments with pagination
         async function loadInstagramComments() {
             try {
-                const response = await apiFetch('/api/instagram/comments?limit=50');
+                const { currentPage, perPage } = instagramPagination.comments;
+                const response = await apiFetch(`/api/instagram/comments?page=${currentPage}&limit=${perPage}`);
                 const data = await response.json();
+
                 instagramData.comments = data.comments || [];
+                instagramPagination.comments.total = data.total || 0;
 
                 renderInstagramCommentsTable(instagramData.comments);
             } catch (error) {
@@ -3167,8 +3296,11 @@
             }
         }
 
-        // Render Instagram posts table
+        // Render Instagram posts table with pagination
         function renderInstagramPostsTable(posts) {
+            const pagination = instagramPagination.posts;
+            const totalPages = Math.ceil(pagination.total / pagination.perPage);
+
             if (!posts || posts.length === 0) {
                 document.getElementById('instagram-posts').innerHTML = '<div class="empty">No Instagram posts found</div>';
                 return;
@@ -3203,13 +3335,23 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="pagination-controls">
+                    <button onclick="changeInstagramPage('posts', 1)" ${pagination.currentPage === 1 ? 'disabled' : ''}>First</button>
+                    <button onclick="changeInstagramPage('posts', ${pagination.currentPage - 1})" ${pagination.currentPage === 1 ? 'disabled' : ''}>Previous</button>
+                    <span class="page-info">Page ${pagination.currentPage} of ${totalPages} (${pagination.total.toLocaleString()} total)</span>
+                    <button onclick="changeInstagramPage('posts', ${pagination.currentPage + 1})" ${pagination.currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+                    <button onclick="changeInstagramPage('posts', ${totalPages})" ${pagination.currentPage >= totalPages ? 'disabled' : ''}>Last</button>
+                </div>
             `;
 
             document.getElementById('instagram-posts').innerHTML = html;
         }
 
-        // Render Instagram comments table
+        // Render Instagram comments table with pagination
         function renderInstagramCommentsTable(comments) {
+            const pagination = instagramPagination.comments;
+            const totalPages = Math.ceil(pagination.total / pagination.perPage);
+
             if (!comments || comments.length === 0) {
                 document.getElementById('instagram-comments').innerHTML = '<div class="empty">No Instagram comments found</div>';
                 return;
@@ -3236,12 +3378,12 @@
                                     // Tapi kita punya post_pk (numeric ID), jadi fallback ke post_url
                                     postUrl = comment.post_url || '#';
                                 }
-                                
+
                                 // Jika post_url masih kosong/null, jangan tampilkan link
-                                const postLink = postUrl && postUrl !== '#' 
+                                const postLink = postUrl && postUrl !== '#'
                                     ? `<a href="${postUrl}" target="_blank" rel="noopener noreferrer">View Post</a>`
                                     : '<span style="color: #999;">-</span>';
-                                
+
                                 return `
                                     <tr>
                                         <td>${comment.comment_author || 'Unknown'}</td>
@@ -3255,13 +3397,23 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="pagination-controls">
+                    <button onclick="changeInstagramPage('comments', 1)" ${pagination.currentPage === 1 ? 'disabled' : ''}>First</button>
+                    <button onclick="changeInstagramPage('comments', ${pagination.currentPage - 1})" ${pagination.currentPage === 1 ? 'disabled' : ''}>Previous</button>
+                    <span class="page-info">Page ${pagination.currentPage} of ${totalPages} (${pagination.total.toLocaleString()} total)</span>
+                    <button onclick="changeInstagramPage('comments', ${pagination.currentPage + 1})" ${pagination.currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+                    <button onclick="changeInstagramPage('comments', ${totalPages})" ${pagination.currentPage >= totalPages ? 'disabled' : ''}>Last</button>
+                </div>
             `;
 
             document.getElementById('instagram-comments').innerHTML = html;
         }
 
-        // Render Instagram authors table
+        // Render Instagram authors table with pagination
         function renderInstagramAuthorsTable(authors) {
+            const pagination = instagramPagination.authors;
+            const totalPages = Math.ceil(pagination.total / pagination.perPage);
+
             if (!authors || authors.length === 0) {
                 document.getElementById('instagram-authors').innerHTML = '<div class="empty">No Instagram authors found</div>';
                 return;
@@ -3293,6 +3445,13 @@
                             `).join('')}
                         </tbody>
                     </table>
+                </div>
+                <div class="pagination-controls">
+                    <button onclick="changeInstagramPage('authors', 1)" ${pagination.currentPage === 1 ? 'disabled' : ''}>First</button>
+                    <button onclick="changeInstagramPage('authors', ${pagination.currentPage - 1})" ${pagination.currentPage === 1 ? 'disabled' : ''}>Previous</button>
+                    <span class="page-info">Page ${pagination.currentPage} of ${totalPages} (${pagination.total.toLocaleString()} total)</span>
+                    <button onclick="changeInstagramPage('authors', ${pagination.currentPage + 1})" ${pagination.currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+                    <button onclick="changeInstagramPage('authors', ${totalPages})" ${pagination.currentPage >= totalPages ? 'disabled' : ''}>Last</button>
                 </div>
             `;
 
@@ -3327,6 +3486,30 @@
             // Reload data with new limit
             loadInstagramPosts();
             loadInstagramComments();
+        }
+
+        // Change Instagram page for pagination
+        function changeInstagramPage(type, page) {
+            const pagination = instagramPagination[type];
+            const totalPages = Math.ceil(pagination.total / pagination.perPage);
+
+            // Validate page number
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+
+            // Update current page
+            pagination.currentPage = page;
+
+            // Reload data for that type
+            if (type === 'posts') {
+                loadInstagramPosts();
+            } else if (type === 'comments') {
+                loadInstagramComments();
+            } else if (type === 'authors') {
+                loadInstagramAuthorsTable();
+            }
+
+            console.log(`📄 Instagram ${type}: Changed to page ${page}`);
         }
     </script>
 </body>
