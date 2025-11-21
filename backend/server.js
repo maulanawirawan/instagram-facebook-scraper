@@ -855,7 +855,54 @@ app.get('/api/instagram/hashtags/top', async (req, res) => {
     }
 });
 
-// Get top Instagram authors
+// Get Instagram authors (paginated)
+app.get('/api/instagram/authors', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        const authorsQuery = `
+            SELECT
+                author,
+                author_profile_link,
+                MAX(author_followers) as followers,
+                COUNT(*) as post_count,
+                SUM(likes) as total_likes,
+                SUM(comments) as total_comments,
+                ROUND(AVG(engagement_score), 2) as avg_engagement
+            FROM instagram_posts
+            WHERE author IS NOT NULL
+            GROUP BY author, author_profile_link
+            ORDER BY post_count DESC, total_likes DESC
+            LIMIT $1 OFFSET $2
+        `;
+
+        const countQuery = `
+            SELECT COUNT(DISTINCT author) as count
+            FROM instagram_posts
+            WHERE author IS NOT NULL
+        `;
+
+        const [authorsResult, countResult] = await Promise.all([
+            pool.query(authorsQuery, [limit, offset]),
+            pool.query(countQuery)
+        ]);
+
+        res.json({
+            authors: authorsResult.rows,
+            total: parseInt(countResult.rows[0].count),
+            page,
+            limit,
+            totalPages: Math.ceil(countResult.rows[0].count / limit)
+        });
+    } catch (error) {
+        console.error('Error fetching Instagram authors:', error);
+        res.status(500).json({ error: 'Failed to fetch authors' });
+    }
+});
+
+// Get top Instagram authors (for charts)
 app.get('/api/instagram/authors/top', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
