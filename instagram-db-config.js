@@ -96,22 +96,28 @@ async function saveInstagramComments(commentsArray, retryCount = 0) {
     try {
         // Convert to database format
         const dbComments = commentsArray.map(comment => {
-            // Generate post_url dari post_pk jika belum ada
+            // Generate post_url dengan fallback yang lebih robust
             let postUrl = comment.post_url;
-            if (!postUrl && comment.post_pk) {
-                // Cari post_code dari post_pk (jika ada di cache)
-                // Atau buat URL fallback
-                postUrl = `https://www.instagram.com/p/${comment.post_code || comment.post_pk}/`;
+
+            // Fallback 1: Generate dari post_code (Instagram short code)
+            if (!postUrl && comment.post_code) {
+                postUrl = `https://www.instagram.com/p/${comment.post_code}/`;
             }
-            
+
+            // Fallback 2: Generate dari post_pk (tidak ideal, tapi lebih baik dari NULL)
+            // NOTE: Ini akan di-update nanti dari database posts table
+            if (!postUrl && comment.post_pk) {
+                postUrl = `https://www.instagram.com/p/${comment.post_pk}/`;
+            }
+
             return {
-                post_url: postUrl || null,  // ← PASTIKAN post_url di-save
+                post_url: postUrl || null,
                 post_pk: String(comment.post_pk),
                 comment_pk: String(comment.comment_pk),
-                comment_author: comment.comment_author,
+                comment_author: comment.comment_author || null,
                 comment_text: comment.comment_text || '',
                 comment_likes: comment.comment_likes || 0,
-                comment_timestamp_unix: comment.comment_timestamp_unix,
+                comment_timestamp_unix: comment.comment_timestamp_unix || null,
                 child_comment_count: comment.child_comment_count || 0,
                 parent_comment_pk: comment.parent_comment_pk ? String(comment.parent_comment_pk) : null,
             };

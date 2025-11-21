@@ -1786,14 +1786,17 @@ function setupApiListeners(page) {
                     console.warn(`[API DEBUG] 💡 This might be from a different post. Available post_pks: ${Array.from(allPosts.keys()).slice(0, 3).join(', ')}...`);
                 }
                 
+                // ========== GET POST INFO FROM MEMORY ==========
+                const relatedPost = allPosts.get(post_pk);
+
                 for (const comment of comments) {
                     const comment_pk = comment.pk;
-                    
+
                     if (!allComments.has(comment_pk)) {
                         allComments.set(comment_pk, {
                             post_pk: post_pk,  // ← Already normalized to String
-                            post_url: postData?.post_url || null,  // ← TAMBAHKAN INI
-                            post_code: postData?.post_code || null,  // ← TAMBAHKAN INI
+                            post_url: relatedPost?.post_url || null,
+                            post_code: relatedPost?.post_code || null,
                             comment_pk: comment_pk,
                             comment_author: comment.user?.username || "unknown",
                             comment_text: comment.text || "",
@@ -1804,7 +1807,12 @@ function setupApiListeners(page) {
                         });
 
                         // ========== AUTO-SAVE TO DATABASE ==========
-                        await saveInstagramComments([allComments.get(comment_pk)]);                        
+                        const commentWithUrl = {
+                            ...allComments.get(comment_pk),
+                            post_url: relatedPost?.post_url || null,
+                            post_code: relatedPost?.post_code || null,
+                        };
+                        await saveInstagramComments([commentWithUrl]);
                     }
                 }
             }
