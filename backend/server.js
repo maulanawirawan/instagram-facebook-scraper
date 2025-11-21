@@ -797,9 +797,14 @@ app.get('/api/instagram/comments', async (req, res) => {
         const limit = parseInt(req.query.limit) || 50;
         const offset = (page - 1) * limit;
 
+        // JOIN dengan instagram_posts untuk dapat post_url yang benar
         const commentsQuery = `
-            SELECT * FROM instagram_comments
-            ORDER BY comment_timestamp_unix DESC
+            SELECT
+                c.*,
+                COALESCE(c.post_url, p.post_url) as post_url
+            FROM instagram_comments c
+            LEFT JOIN instagram_posts p ON c.post_pk = p.id::TEXT
+            ORDER BY c.comment_timestamp_unix DESC
             LIMIT $1 OFFSET $2
         `;
 
