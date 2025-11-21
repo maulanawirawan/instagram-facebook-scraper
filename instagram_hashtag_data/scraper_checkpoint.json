@@ -1,0 +1,14 @@
+{
+  "last_update": "2025-11-20T11:01:05.772Z",
+  "current_phase": "processing",
+  "current_hashtag": "politik",
+  "hashtag_index": 0,
+  "phase_start_time": "2025-11-20T11:01:05.772Z",
+  "phase_duration_minutes": 120,
+  "elapsed_minutes": 0,
+  "remaining_minutes": 120,
+  "cycle_number": 1,
+  "posts_collected": 48,
+  "posts_processed": 3,
+  "engagement_version": 0
+}

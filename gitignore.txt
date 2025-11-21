@@ -1,0 +1,8 @@
+
+# Dashboard files
+.env
+backend/node_modules/
+frontend/node_modules/
+postgres_data/
+pgadmin_data/
+*.log

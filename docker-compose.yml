@@ -1,0 +1,103 @@
+version: '3.8'
+
+# =========================================================
+# SIMPLIFIED DOCKER SETUP - Database + Dashboard Only
+# =========================================================
+# facebookkey.js akan langsung save ke database real-time
+# Backend API tidak diperlukan karena data langsung masuk
+# =========================================================
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: facebook-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fbadmin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fbpass123}
+      POSTGRES_DB: ${POSTGRES_DB:-facebook_data}
+    ports:
+      - "0.0.0.0:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - facebook-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fbadmin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin - Database Management UI (Optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: facebook-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@facebook.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "0.0.0.0:${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - facebook-network
+    depends_on:
+      - postgres
+
+  # Backend API (Node.js + Express)
+  # Provides REST API for dashboard
+  api:
+    build: ./backend
+    container_name: facebook-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DOCKER: "true"
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-fbadmin}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-fbpass123}
+      DB_NAME: ${POSTGRES_DB:-facebook_data}
+    ports:
+      - "0.0.0.0:${API_PORT:-3000}:3000"
+    volumes:
+      - ./backend:/app
+      - ./facebook_data:/app/data
+      - /app/node_modules
+    networks:
+      - facebook-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run dev
+
+  # Frontend Dashboard
+  # Displays real-time data from database
+  frontend:
+    build: ./frontend
+    container_name: facebook-frontend
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:3000
+    ports:
+      - "0.0.0.0:${FRONTEND_PORT:-8080}:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    networks:
+      - facebook-network
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  facebook-network:
+    driver: bridge

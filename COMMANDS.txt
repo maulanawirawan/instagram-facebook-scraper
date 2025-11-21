@@ -1,0 +1,240 @@
+═══════════════════════════════════════════════════════════════
+📷 INSTAGRAM AUTO-SAVE - COMPLETE COMMAND LIST
+═══════════════════════════════════════════════════════════════
+
+Ikuti step ini di VS Code Terminal secara berurutan:
+
+───────────────────────────────────────────────────────────────
+STEP 1: GIT PULL (Update Code Terbaru)
+───────────────────────────────────────────────────────────────
+
+cd /path/to/facebook-keyword
+
+git pull origin claude/complete-previous-task-01TCaxcpgYRRjaFPhrKvnKfZ
+
+# ATAU kalau ada conflict:
+git fetch origin claude/complete-previous-task-01TCaxcpgYRRjaFPhrKvnKfZ
+git reset --hard origin/claude/complete-previous-task-01TCaxcpgYRRjaFPhrKvnKfZ
+
+
+───────────────────────────────────────────────────────────────
+STEP 2: DATABASE SETUP (One-Time Only)
+───────────────────────────────────────────────────────────────
+
+cd backend
+
+# Create Instagram tables
+psql -U fbadmin -d facebook_data -f instagram_schema.sql
+
+# Verify tables created
+psql -U fbadmin -d facebook_data -c "\dt instagram*"
+
+
+───────────────────────────────────────────────────────────────
+STEP 3: START BACKEND SERVER
+───────────────────────────────────────────────────────────────
+
+🔴 BUKA TERMINAL BARU #1 (jangan tutup terminal ini!)
+
+cd backend
+npm start
+
+✅ Backend akan running di: http://localhost:3002
+✅ Lihat output: "Instagram API connection successful!"
+
+
+───────────────────────────────────────────────────────────────
+STEP 4: EDIT INSTAGRAM SCRAPER (One-Time Setup)
+───────────────────────────────────────────────────────────────
+
+🔴 BUKA TERMINAL BARU #2
+
+cd /path/to/facebook-keyword
+
+# Backup original file
+cp apiscraperkeyword.js apiscraperkeyword.js.backup
+
+# Edit apiscraperkeyword.js dengan VS Code
+code apiscraperkeyword.js
+
+
+█ TAMBAHKAN DI BAGIAN ATAS (setelah require statements):
+────────────────────────────────────────────────────────
+
+// AUTO-SAVE TO DATABASE
+const {
+    saveInstagramPost,
+    saveInstagramComments,
+    checkInstagramAPIHealth,
+} = require('./instagram-db-config');
+
+
+█ CARI BARIS INI (sekitar line 1598-1616):
+────────────────────────────────────────────────────────
+
+if (!allPosts.has(post_pk)) {
+    allPosts.set(post_pk, {
+        post_pk: post_pk,
+        post_code: post.code,
+        post_url: `https://www.instagram.com/p/${post.code}/`,
+        author_username: post.user?.username || "unknown",
+        // ... dst
+    });
+
+    // ⭐ TAMBAHKAN BARIS INI (setelah allPosts.set):
+    await saveInstagramPost(allPosts.get(post_pk));
+
+    totalPosts++;
+}
+
+
+█ CARI BARIS INI (sekitar line 1784-1794):
+────────────────────────────────────────────────────────
+
+if (!allComments.has(comment_pk)) {
+    allComments.set(comment_pk, {
+        post_pk: post_pk,
+        comment_pk: comment_pk,
+        comment_author: comment.user?.username || "unknown",
+        // ... dst
+    });
+
+    // ⭐ TAMBAHKAN BARIS INI (setelah allComments.set):
+    await saveInstagramComments([allComments.get(comment_pk)]);
+}
+
+
+█ CARI FUNGSI MAIN (sekitar awal scraping):
+────────────────────────────────────────────────────────
+
+// ⭐ TAMBAHKAN DI AWAL FUNGSI (sebelum mulai scrape):
+console.log('🔌 Checking database connection...');
+await checkInstagramAPIHealth();
+
+
+───────────────────────────────────────────────────────────────
+STEP 5: RUN INSTAGRAM SCRAPER
+───────────────────────────────────────────────────────────────
+
+🔴 BUKA TERMINAL BARU #3 (atau gunakan Terminal #2)
+
+cd /path/to/facebook-keyword
+
+node apiscraperkeyword.js
+
+✅ Expected Output:
+   🔌 Checking database connection...
+   ✅ Instagram API connection successful!
+   [API HASHTAG] ✅ +5 posts dari search API
+   ✅ DB: Post inserted - https://www.instagram.com/p/ABC123/
+   ✅ DB: Post inserted - https://www.instagram.com/p/DEF456/
+   [API REST PARENT] ✅ 10 parent comments for post_pk: "12345"
+   ✅ DB: Comments saved - 10 new, 0 updated
+
+
+───────────────────────────────────────────────────────────────
+STEP 6: OPEN DASHBOARD & VERIFY
+───────────────────────────────────────────────────────────────
+
+Browser: http://localhost:3002
+
+1. Klik button "Instagram" di platform switcher
+2. Lihat stats cards (Total Posts, Authors, etc.)
+3. Lihat charts (Top Hashtags, Top Authors, Daily Trends)
+4. Lihat tables (Posts, Comments, Authors)
+
+
+───────────────────────────────────────────────────────────────
+VERIFICATION COMMANDS (Check Data)
+───────────────────────────────────────────────────────────────
+
+# Total posts
+psql -U fbadmin -d facebook_data -c "SELECT COUNT(*) FROM instagram_posts;"
+
+# Total comments
+psql -U fbadmin -d facebook_data -c "SELECT COUNT(*) FROM instagram_comments;"
+
+# Recent 10 posts
+psql -U fbadmin -d facebook_data -c "SELECT author, likes, comments, post_url FROM instagram_posts ORDER BY id DESC LIMIT 10;"
+
+# Top 5 authors
+psql -U fbadmin -d facebook_data -c "SELECT author, COUNT(*) as posts, SUM(likes) as total_likes FROM instagram_posts GROUP BY author ORDER BY posts DESC LIMIT 5;"
+
+# Check specific hashtag
+psql -U fbadmin -d facebook_data -c "SELECT COUNT(*) FROM instagram_posts WHERE query_used='your_hashtag';"
+
+
+───────────────────────────────────────────────────────────────
+TROUBLESHOOTING
+───────────────────────────────────────────────────────────────
+
+❌ Problem: "Instagram API not available"
+✅ Solution:
+   cd backend && npm start
+   # Make sure backend is running di Terminal #1
+
+❌ Problem: Database error
+✅ Solution:
+   sudo systemctl status postgresql
+   psql -U fbadmin -d facebook_data -c "SELECT 1;"
+
+❌ Problem: Posts tidak save
+✅ Solution:
+   # Test manual:
+   curl -X POST http://localhost:3002/api/instagram/posts/save \
+     -H "Content-Type: application/json" \
+     -d '{"post_url":"test","author":"test","likes":100}'
+
+❌ Problem: Scraper error "require('./instagram-db-config')"
+✅ Solution:
+   # Make sure file ada:
+   ls instagram-db-config.js
+   # Make sure axios installed:
+   npm install axios
+
+
+───────────────────────────────────────────────────────────────
+CONFIGURATION (Optional)
+───────────────────────────────────────────────────────────────
+
+Edit instagram-db-config.js untuk custom settings:
+
+const API_CONFIG = {
+    BASE_URL: 'http://localhost:3002',  // Ganti kalau beda port
+    RETRY_ATTEMPTS: 3,                  // Retry berapa kali
+    RETRY_DELAY: 2000,                  // Delay antar retry (ms)
+    BATCH_SIZE: 10,                     // Posts per batch
+    ENABLE_AUTO_SAVE: true,             // false = disable auto-save
+};
+
+
+═══════════════════════════════════════════════════════════════
+SUMMARY
+═══════════════════════════════════════════════════════════════
+
+3 Terminal yang harus dibuka:
+
+Terminal #1: Backend Server
+  cd backend && npm start
+  (jangan ditutup, biarkan running)
+
+Terminal #2: Edit Scraper (one-time)
+  Edit apiscraperkeyword.js
+  Tambah 3 integration points
+
+Terminal #3: Run Scraper
+  node apiscraperkeyword.js
+  (data langsung save ke database!)
+
+Browser:
+  http://localhost:3002
+  Klik "Instagram"
+  Lihat data real-time!
+
+═══════════════════════════════════════════════════════════════
+
+✅ DONE! Data Instagram sekarang auto-save ke database seperti Facebook.
+✅ Tidak perlu import manual lagi.
+✅ Dashboard langsung update real-time.
+
+Read full documentation: INSTAGRAM_SETUP.md

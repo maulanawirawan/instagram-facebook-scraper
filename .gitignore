@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Cache and logs
+cache/
+logs/
+
+# Screenshots
+screenshots/
+
+# Data folders (jika tidak ingin di-push)
+facebook_data/
+instagram_data/
+
+# Progress files
+scraper_progress.json
+stats.json
+strategy_report.json
+strategy_report.txt
+
+# Backups folder
+backups/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
